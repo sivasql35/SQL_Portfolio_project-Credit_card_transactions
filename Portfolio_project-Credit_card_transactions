@@ -12,11 +12,83 @@
 	select SUM(amount) as total_amount 
 	from credit_card_transactions
 )
-
 select citywise_sales.*, total_spent.*,
 	concat(convert(varchar(10), (city_wise_amount*100)/ total_amount), '%')
 as percentage_contribution
 from citywise_sales, total_spent
-------------------------------------------**-----------------------------------------
 
+------------------------------------------*******************************************---------------------------------------------------
 --2 write a query to print highest spend month and amount spent in that month for each card type
+
+with all_spends as
+(
+	select card_type, datepart(year, transaction_date) as [year], 
+			datename(month,transaction_date) as [month], 
+			SUM(amount) as spent
+	from credit_card_transactions
+	group by datepart(year, transaction_date), datename(month,transaction_date), card_type
+)
+, cte2 as (
+	select *, dense_rank() over(partition by card_type order by spent desc) as rn
+	from all_spends
+)
+select card_type, [year],[month], spent from cte2 where rn=1
+
+------------------------------------------*******************************************---------------------------------------------------
+--3 write a query to print the transaction details(all columns from the table) for each card type when
+it reaches a cumulative of 1000000 total spends(We should have 4 rows in the o/p one for each card type)
+
+with spends as
+(
+	select
+	*, SUM(amount) over(partition by card_type order by transaction_date,transaction_id) as cumulative_spends
+	from credit_card_transactions
+),
+cte2 as
+(
+	select *, DENSE_RANK() over(partition by card_type order by cumulative_spends) as rn 
+	from spends
+	where cumulative_spends >= 1000000
+)
+select * from cte2 where rn = 1
+
+------------------------------------------*************************************************---------------------------------------------------
+4- write a query to find city which had lowest percentage spend for gold card type
+
+;with spends as
+(
+	select card_type, city, SUM(amount) as total
+	from credit_card_transactions
+	group by card_type, city
+	having card_type = 'gold'
+)
+select top 1 city from spends order by total
+
+
+------------------------------------------*************************************************---------------------------------------------------
+5- write a query to print 3 columns:  city, highest_expense_type , lowest_expense_type (example format : Delhi , bills, Fuel)
+
+;with CTE as (
+select  city,exp_type,sum(amount)  as total_amount
+from credit_card_transactions
+group by city,exp_type
+)
+select  a.city,
+	max(case when a.rn_high=1 then a.exp_type end )as highest_expense_type,
+	max(case when a.rn_low=1 then a.exp_type end) as lowest_expense_type
+from
+(
+	select city,exp_type,total_amount,
+		dense_rank() over(partition by city order by total_amount desc) as rn_high,
+		dense_rank() over(partition by city order by total_amount) as rn_low
+	from CTE
+) a
+group by a.city
+
+------------------------------------------*************************************************---------------------------------------------------
+6- write a query to find percentage contribution of spends by females for each expense type
+
+
+7- which card and expense type combination saw highest month over month growth in Jan-2014
+8- during weekends which city has highest total spend to total no of transcations ratio 
+9- which city took least number of days to reach its 500th transaction after the first transaction in that city
