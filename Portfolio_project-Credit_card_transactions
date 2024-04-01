@@ -1,0 +1,22 @@
+--1- write a query to print top 5 cities with highest spends and their percentage contribution of total credit card spends 
+
+;with citywise_sales as
+(
+	select top 5 city, SUM(amount) as city_wise_amount
+	from credit_card_transactions
+	group by city
+	order by SUM(amount) desc
+)
+, total_spent as
+(
+	select SUM(amount) as total_amount 
+	from credit_card_transactions
+)
+
+select citywise_sales.*, total_spent.*,
+	concat(convert(varchar(10), (city_wise_amount*100)/ total_amount), '%')
+as percentage_contribution
+from citywise_sales, total_spent
+------------------------------------------**-----------------------------------------
+
+--2 write a query to print highest spend month and amount spent in that month for each card type
